@@ -128,7 +128,7 @@ python3 bin/build_tagger.py   # builds a blind A/B tagger from corpus/eval.examp
 ```
 Then drop in your own `corpus/pairs.jsonl` and it drafts toward you instead of the example.
 
-Schemas for every artifact: [docs/schemas.md](docs/schemas.md). The exact eval flow: [docs/eval-protocol.md](docs/eval-protocol.md).
+Schemas for every artifact: [docs/schemas.md](docs/schemas.md). The exact eval flow: [docs/eval-protocol.md](docs/eval-protocol.md). Running it hands-free (and the one step you can't automate): [docs/automation.md](docs/automation.md).
 
 ## What's in here, and what isn't
 
