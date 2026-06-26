@@ -1,0 +1,224 @@
+{
+  "version": 3,
+  "updatedAt": "2026-06-25",
+  "phrases": [
+    {
+      "phrase": "load-bearing",
+      "regex": "\\bload[- ]bearing\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "sharp",
+      "regex": "\\bsharp(?:est|er)?\\b(?=[^.!?]{0,80}\\b(critique|point|idea|insight|question|take|observation|push(?:back)?|distinction|analysis|framing|read|note|feedback|thinking|mind)\\b)",
+      "addedAt": "2026-05-07",
+      "note": "evaluative label handed to the reader; replace with a felt reaction or cut"
+    },
+    {
+      "phrase": "delve",
+      "regex": "\\bdelv(?:e|es|ed|ing)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "tapestry",
+      "regex": "\\btapestry\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "navigate",
+      "regex": "\\bnavigat(?:e|es|ed|ing)\\b(?=[^.!?]{0,80}\\b(complex|tradeoff|tension|landscape|challenge|nuance|complexity)\\b)",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "robust",
+      "regex": "\\brobust(?:ly|ness)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "elegant",
+      "regex": "\\belegant(?:ly)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "to be clear",
+      "regex": "(?:^|[\\s,])to be clear[,:]",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "let's dig in",
+      "regex": "\\blet'?s dig in(?:to)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "absolutely!",
+      "regex": "(?:^|\\s)absolutely[!.](?:\\s|$)",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "great question",
+      "regex": "\\b(that'?s a |what a )?great question\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "I appreciate",
+      "regex": "\\bI appreciate (?:that|your|the )",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "in the realm of",
+      "regex": "\\bin the realm of\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "embark on",
+      "regex": "\\bembark(?:ed|ing)? on\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "realm",
+      "regex": "\\brealm of\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "landscape",
+      "regex": "\\b(?:the|this|current|broader|evolving) (?:\\w+ )?landscape\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "nuanced",
+      "regex": "\\bnuanc(?:ed|e)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "seamless",
+      "regex": "\\bseamless(?:ly)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "compelling",
+      "regex": "\\bcompelling\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "multifaceted",
+      "regex": "\\bmultifaceted\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "holistic",
+      "regex": "\\bholistic(?:ally)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "paradigm",
+      "regex": "\\bparadigm(?:s|atic)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "crucial",
+      "regex": "\\bcrucial(?:ly)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "indeed",
+      "regex": "(?:^|[\\s,])indeed[,.!]",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "furthermore",
+      "regex": "(?:^|[\\s,])furthermore[,.]",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "moreover",
+      "regex": "(?:^|[\\s,])moreover[,.]",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "testament to",
+      "regex": "\\ba testament to\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "unleash",
+      "regex": "\\bunleash(?:es|ed|ing)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "leverage",
+      "regex": "\\bleverag(?:e|es|ed|ing)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "ecosystem",
+      "regex": "\\becosystem\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "you're absolutely right",
+      "regex": "\\byou'?re absolutely (?:right|correct)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "pivotal",
+      "regex": "\\bpivotal(?:ly)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "showcase",
+      "regex": "\\bshowcas(?:e|es|ed|ing)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "underscore",
+      "regex": "\\bunderscor(?:e|es|ed|ing)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "meticulous",
+      "regex": "\\bmeticulous(?:ly|ness)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "intricate",
+      "regex": "\\bintric(?:ate|acies|acy)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "vibrant",
+      "regex": "\\bvibrant(?:ly)?\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "let me know if",
+      "regex": "\\blet me know if (?:you|there|this|that|anything|you'?d|the|i)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "I hope this helps",
+      "regex": "\\bI hope (?:this|that)?\\s*(?:helps|is helpful)\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "deep dive",
+      "regex": "\\b(?:deep[- ]div(?:e|es|ing)|(?:let'?s |we'?ll )?div(?:e|ing) (?:in|into|deeper|deep))\\b",
+      "addedAt": "2026-05-07"
+    },
+    {
+      "phrase": "filler-intensifier",
+      "regex": "(?:^|[\\s,(])(?:genuinely|honestly|frankly|candidly|truthfully)\\b",
+      "addedAt": "2026-06-25",
+      "note": "cut unless strictly contrastive; implies the default is otherwise"
+    },
+    {
+      "phrase": "to be fair",
+      "regex": "\\bto be fair\\b",
+      "addedAt": "2026-06-25"
+    },
+    {
+      "phrase": "em-dash",
+      "regex": "\u2014",
+      "addedAt": "2026-06-11",
+      "note": "restructure: period, comma, colon, or parens"
+    }
+  ]
+}

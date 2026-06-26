@@ -1,0 +1,18 @@
+# Your real voice data goes here and must never be committed.
+corpus/pairs.jsonl
+corpus/*.local.*
+ledger.jsonl
+*-picks*.json
+*picks*.json
+*-tagger*.html
+voice-tagger*.html
+proposals/
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+
+# Keep the synthetic example and the register template:
+!corpus/pairs.example.jsonl
+!corpus/registers.md
