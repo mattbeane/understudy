@@ -1,5 +1,7 @@
 # Understudy
 
+![Understudy social preview](assets/understudy-social-preview-shakespearean.jpg)
+
 An understudy learns your part by watching you play it, then goes on in your place. This one
 watches what you change about an AI's drafts, learns your voice from the difference, and writes
 the next one as you.
