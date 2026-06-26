@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/understudy-avatar-shakespearean.jpg" width="150" alt="Understudy avatar">
+</p>
+
 # Understudy
 
 ![Understudy social preview](assets/understudy-social-preview-shakespearean.jpg)
