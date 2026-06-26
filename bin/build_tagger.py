@@ -32,24 +32,32 @@ def js_embed(obj):
 
 
 def load_jsonl(p):
-    """Return (dict keyed by id, n_bad). Bad rows are counted, not silently swallowed."""
-    d, n_bad = {}, 0
+    """Return (dict keyed by id, n_bad, dup_ids). Bad rows are counted, not silently
+    swallowed; duplicate ids are reported (the last one wins in the dict)."""
+    d, n_bad, dups = {}, 0, []
     p = pathlib.Path(p)
     if not p.exists():
-        return d, n_bad
+        return d, n_bad, dups
     for line in p.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
         try:
             o = json.loads(line)
-            d[o["id"]] = o
+            pid = o["id"]
+            if pid in d:
+                dups.append(pid)
+            d[pid] = o
         except (json.JSONDecodeError, KeyError):
             n_bad += 1
-    return d, n_bad
+    return d, n_bad, dups
 
 
 def build_items(eval_dir):
+    """Assemble the tagger items, failing closed on anything that would corrupt the eval:
+    a missing source file, an id absent from its source, a duplicate id, an empty cell,
+    or 'sent' (the post-hoc reference) used as an A/B candidate. A blank A/B card means a
+    human pick against nothing, so these are errors, not warnings."""
     eval_dir = pathlib.Path(eval_dir)
     key_path = eval_dir / "panel-key.json"
     if not key_path.exists():
@@ -57,21 +65,56 @@ def build_items(eval_dir):
                  f"See corpus/eval.example/ for the shape.")
     key = json.loads(key_path.read_text(encoding="utf-8"))
 
-    sources = sorted({s for ab in key.values() for s in (ab.get("A"), ab.get("B")) if s})
-    # always make a 'sent' reference available, even when it isn't one of the A/B options
-    load_names = sorted(set(sources) | {"sent"})
-    stores, bad_total = {}, 0
-    for s in load_names:
-        stores[s], nb = load_jsonl(eval_dir / f"{s}.jsonl")
-        bad_total += nb
-    meta, nb = load_jsonl(eval_dir / "meta.jsonl")
-    bad_total += nb
-    if bad_total:
-        print(f"warning: skipped {bad_total} malformed line(s) across the eval files.", file=sys.stderr)
+    errors, warnings = [], []
 
-    def text_for(source, pid):
-        row = stores.get(source, {}).get(pid) or {}
-        return row.get("text", "")
+    # validate the key shape and collect the A/B sources
+    ab_sources = set()
+    for pid, ab in key.items():
+        for slot in ("A", "B"):
+            s = (ab or {}).get(slot)
+            if not s:
+                errors.append(f"{pid}: panel-key missing a '{slot}' source")
+            else:
+                ab_sources.add(s)
+    if "sent" in ab_sources:
+        errors.append("'sent' is the post-hoc reference, not an A/B candidate; "
+                      "remove it from the panel-key A/B slots")
+
+    # load every referenced source; a missing file or duplicate id is fatal
+    stores = {}
+    for s in sorted(ab_sources):
+        fp = eval_dir / f"{s}.jsonl"
+        if not fp.exists():
+            errors.append(f"source file missing: {fp.name} (referenced in panel-key)")
+            stores[s] = {}
+            continue
+        store, n_bad, dups = load_jsonl(fp)
+        if dups:
+            errors.append(f"duplicate id(s) in {fp.name}: {sorted(set(dups))}")
+        if n_bad:
+            warnings.append(f"{n_bad} malformed line(s) in {fp.name}")
+        stores[s] = store
+
+    # 'sent' and 'meta' are optional reference/display data, not scored
+    sent_store, _, _ = load_jsonl(eval_dir / "sent.jsonl")
+    meta, _, meta_dups = load_jsonl(eval_dir / "meta.jsonl")
+    if meta_dups:
+        warnings.append(f"duplicate id(s) in meta.jsonl: {sorted(set(meta_dups))}")
+
+    def text_for(store, pid):
+        return (store.get(pid) or {}).get("text", "")
+
+    # every A/B cell must resolve to non-empty text
+    for pid, ab in key.items():
+        for slot in ("A", "B"):
+            s = (ab or {}).get(slot)
+            if s and s in stores and not text_for(stores[s], pid):
+                errors.append(f"{pid}: source '{s}' has no text for this id")
+
+    if warnings:
+        print("warning: " + "; ".join(warnings), file=sys.stderr)
+    if errors:
+        sys.exit("error: eval integrity check failed (fail-closed):\n  - " + "\n  - ".join(errors))
 
     items = []
     for i, (pid, ab) in enumerate(key.items(), start=1):
@@ -82,9 +125,9 @@ def build_items(eval_dir):
             "recipient": m.get("recipient", ""),
             "channel": m.get("channel", ""),
             "context": m.get("context", ""),
-            "A": {"text": text_for(ab.get("A"), pid), "source": ab.get("A")},
-            "B": {"text": text_for(ab.get("B"), pid), "source": ab.get("B")},
-            "real_send": text_for("sent", pid),
+            "A": {"text": text_for(stores[ab["A"]], pid), "source": ab["A"]},
+            "B": {"text": text_for(stores[ab["B"]], pid), "source": ab["B"]},
+            "real_send": text_for(sent_store, pid),
         })
     return items
 

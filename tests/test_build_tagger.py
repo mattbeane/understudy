@@ -1,6 +1,8 @@
 """build_tagger.py: builds a self-contained tagger from the shipped example eval dir."""
 import json
 
+import pytest
+
 import build_tagger
 
 
@@ -28,12 +30,63 @@ def test_items_carry_blind_sources_and_meta(tmp_path):
     assert ex1["real_send"]
 
 
-def test_load_jsonl_counts_bad(tmp_path):
+def test_load_jsonl_counts_bad_and_dups(tmp_path):
     f = tmp_path / "x.jsonl"
-    f.write_text('{"id":"a","text":"ok"}\nbroken\n{"no_id":true}\n')
-    d, n_bad = build_tagger.load_jsonl(f)
+    f.write_text('{"id":"a","text":"ok"}\nbroken\n{"no_id":true}\n{"id":"a","text":"again"}\n')
+    d, n_bad, dups = build_tagger.load_jsonl(f)
     assert "a" in d
-    assert n_bad == 2  # malformed JSON + missing id key
+    assert n_bad == 2      # malformed JSON + missing id key
+    assert dups == ["a"]   # second "a" flagged
+
+
+def _write_eval(tmp_path, key, sources):
+    ed = tmp_path / "ev"
+    ed.mkdir()
+    (ed / "panel-key.json").write_text(json.dumps(key))
+    for name, rows in sources.items():
+        (ed / f"{name}.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return ed
+
+
+def test_fail_closed_missing_source_file(tmp_path):
+    ed = _write_eval(tmp_path, {"x": {"A": "draft", "B": "revised"}},
+                     {"draft": [{"id": "x", "text": "a"}]})  # revised.jsonl absent
+    with pytest.raises(SystemExit):
+        build_tagger.build_items(ed)
+
+
+def test_fail_closed_missing_id(tmp_path):
+    ed = _write_eval(tmp_path, {"x": {"A": "draft", "B": "revised"}},
+                     {"draft": [{"id": "x", "text": "a"}], "revised": [{"id": "y", "text": "b"}]})
+    with pytest.raises(SystemExit):
+        build_tagger.build_items(ed)
+
+
+def test_fail_closed_duplicate_id(tmp_path):
+    ed = _write_eval(tmp_path, {"x": {"A": "draft", "B": "revised"}},
+                     {"draft": [{"id": "x", "text": "a"}, {"id": "x", "text": "a2"}],
+                      "revised": [{"id": "x", "text": "b"}]})
+    with pytest.raises(SystemExit):
+        build_tagger.build_items(ed)
+
+
+def test_fail_closed_empty_cell(tmp_path):
+    ed = _write_eval(tmp_path, {"x": {"A": "draft", "B": "revised"}},
+                     {"draft": [{"id": "x", "text": ""}], "revised": [{"id": "x", "text": "b"}]})
+    with pytest.raises(SystemExit):
+        build_tagger.build_items(ed)
+
+
+def test_fail_closed_sent_as_candidate(tmp_path):
+    ed = _write_eval(tmp_path, {"x": {"A": "draft", "B": "sent"}},
+                     {"draft": [{"id": "x", "text": "a"}], "sent": [{"id": "x", "text": "s"}]})
+    with pytest.raises(SystemExit):
+        build_tagger.build_items(ed)
+
+
+def test_shipped_example_passes_integrity():
+    items = build_tagger.build_items(build_tagger.EXAMPLE_DIR)
+    assert len(items) == 3
 
 
 def test_script_breakout_is_neutralized(tmp_path):
