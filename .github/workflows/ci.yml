@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Run tests
+        run: python -m pytest -q
+      - name: Smoke-test the out-of-box examples
+        run: |
+          python3 bin/retrieve.py --recipient "Sam (investor)" --k 2
+          echo 'Hi Sam, *Round:* confirming $4M...' | python3 bin/dosage.py --bucket "Investors / board"
+          python3 bin/build_tagger.py corpus/eval.example "$RUNNER_TEMP/tagger.html"

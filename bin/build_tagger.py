@@ -1,69 +1,90 @@
 #!/usr/bin/env python3
 """
-build_tagger.py - turn a understudy eval batch into a standalone, keyboard-driven
-HTML tagging app. Reusable: point it at any eval dir that has
-  eval_drafts.jsonl  (id, recipient, channel, context, claude_draft)
-  revised.jsonl      (id, spec_v2_revised)
-  eval_truth.jsonl   (id, matt_sent)
-  panel-key.json     ({id: {A: source, B: source}})
-and it emits a self-contained .html (no network, opens from file://).
+build_tagger.py - turn an understudy eval batch into a standalone, keyboard-driven
+HTML blind-A/B tagger. The human labels which of two versions reads more like them,
+without seeing which is which. Reusable: point it at any eval dir.
+
+An eval dir contains:
+  panel-key.json      {id: {"A": "<source>", "B": "<source>"}}   the blind A/B map
+  <source>.jsonl      {id, text}                                  one file per source named in the key
+  meta.jsonl          {id, recipient, channel, context}          optional, for display
+A source literally named "sent" (if present) is shown as the post-hoc reference only.
+
+It emits a self-contained .html (no network, opens from file://). Picks export to a
+JSON the calibration step reads.
 
 Usage:
-  python3 build_tagger.py <eval_dir> <out.html> [batch_label]
+  python3 build_tagger.py [eval_dir] [out.html] [--label NAME]
+  python3 build_tagger.py                      # runs the shipped example
 """
-import json, sys, html, pathlib
+import json, sys, argparse, pathlib
 
-eval_dir = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else
-                        "/Users/mattbeane/.claude/skills/wild-voice/corpus/v2")
-out_path = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else
-                        str(pathlib.Path.home() / "Downloads/voice-tagger.html"))
-batch = sys.argv[3] if len(sys.argv) > 3 else "v2"
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+EXAMPLE_DIR = ROOT / "corpus/eval.example"
+
 
 def load_jsonl(p):
-    d = {}
-    for line in open(p, encoding="utf-8"):
+    """Return (dict keyed by id, n_bad). Bad rows are counted, not silently swallowed."""
+    d, n_bad = {}, 0
+    p = pathlib.Path(p)
+    if not p.exists():
+        return d, n_bad
+    for line in p.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
         try:
             o = json.loads(line)
             d[o["id"]] = o
-        except Exception:
-            pass
-    return d
+        except (json.JSONDecodeError, KeyError):
+            n_bad += 1
+    return d, n_bad
 
-drafts = load_jsonl(eval_dir / "eval_drafts.jsonl")
-revised = load_jsonl(eval_dir / "revised.jsonl")
-truth = load_jsonl(eval_dir / "eval_truth.jsonl")
-key = json.load(open(eval_dir / "panel-key.json", encoding="utf-8"))
 
-src_text = {"claude_draft": drafts, "spec_v2_revised": revised, "matt_sent": truth}
-src_field = {"claude_draft": "claude_draft", "spec_v2_revised": "spec_v2_revised", "matt_sent": "matt_sent"}
+def build_items(eval_dir):
+    eval_dir = pathlib.Path(eval_dir)
+    key_path = eval_dir / "panel-key.json"
+    if not key_path.exists():
+        sys.exit(f"error: {key_path} not found. An eval dir needs panel-key.json. "
+                 f"See corpus/eval.example/ for the shape.")
+    key = json.loads(key_path.read_text(encoding="utf-8"))
 
-items = []
-for i, (pid, ab) in enumerate(key.items(), start=1):
-    if pid not in drafts or pid not in revised:
-        continue
-    def text_for(source):
-        store = src_text.get(source, {})
-        return (store.get(pid) or {}).get(src_field.get(source, ""), "")
-    items.append({
-        "item": i,
-        "id": pid,
-        "recipient": drafts[pid].get("recipient", ""),
-        "channel": drafts[pid].get("channel", ""),
-        "context": drafts[pid].get("context", ""),
-        "A": {"text": text_for(ab["A"]), "source": ab["A"]},
-        "B": {"text": text_for(ab["B"]), "source": ab["B"]},
-        "real_send": (truth.get(pid) or {}).get("matt_sent", ""),
-    })
+    sources = sorted({s for ab in key.values() for s in (ab.get("A"), ab.get("B")) if s})
+    # always make a 'sent' reference available, even when it isn't one of the A/B options
+    load_names = sorted(set(sources) | {"sent"})
+    stores, bad_total = {}, 0
+    for s in load_names:
+        stores[s], nb = load_jsonl(eval_dir / f"{s}.jsonl")
+        bad_total += nb
+    meta, nb = load_jsonl(eval_dir / "meta.jsonl")
+    bad_total += nb
+    if bad_total:
+        print(f"warning: skipped {bad_total} malformed line(s) across the eval files.", file=sys.stderr)
 
-DATA = json.dumps(items, ensure_ascii=False)
+    def text_for(source, pid):
+        row = stores.get(source, {}).get(pid) or {}
+        return row.get("text", "")
+
+    items = []
+    for i, (pid, ab) in enumerate(key.items(), start=1):
+        m = meta.get(pid, {})
+        items.append({
+            "item": i,
+            "id": pid,
+            "recipient": m.get("recipient", ""),
+            "channel": m.get("channel", ""),
+            "context": m.get("context", ""),
+            "A": {"text": text_for(ab.get("A"), pid), "source": ab.get("A")},
+            "B": {"text": text_for(ab.get("B"), pid), "source": ab.get("B")},
+            "real_send": text_for("sent", pid),
+        })
+    return items
+
 
 TEMPLATE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voice Tagger __BATCH__</title>
+<title>Understudy Tagger __BATCH__</title>
 <style>
   :root{
     --bg:#0f1419; --panel:#161c24; --panel2:#1c242e; --ink:#e6edf3; --dim:#8b97a6;
@@ -113,7 +134,7 @@ TEMPLATE = r"""<!doctype html>
 </style></head>
 <body>
 <header>
-  <h1>VOICE TAGGER</h1><span class="dim" id="batch"></span>
+  <h1>UNDERSTUDY TAGGER</h1><span class="dim" id="batch"></span>
   <div class="bar"><i id="prog"></i></div>
   <span class="dim" id="count"></span>
   <div class="btns">
@@ -126,7 +147,7 @@ TEMPLATE = r"""<!doctype html>
 <script>
 const DATA = __DATA__;
 const BATCH = "__BATCH__";
-const LS = "voicetag:"+BATCH;
+const LS = "understudytag:"+BATCH;
 let state = JSON.parse(localStorage.getItem(LS) || "null") || {idx:0, picks:{}, diff:true, ref:false};
 state.diff = state.diff!==false;
 function save(){localStorage.setItem(LS, JSON.stringify(state));}
@@ -169,7 +190,7 @@ function render(){
 
   if(state.idx>=DATA.length){
     app.innerHTML='<div class="done"><h2>All '+DATA.length+' tagged.</h2>'+
-      '<p class="dim">Press <kbd>e</kbd> or click export. The file downloads to your Downloads folder, then tell Claude it\'s done.</p>'+
+      '<p class="dim">Press <kbd>e</kbd> or click export. The file downloads to your Downloads folder.</p>'+
       '<div>'+DATA.map((d,i)=>{const p=state.picks[d.item];return '<span class="pill">'+(i+1)+': '+(p?p.pick:'—')+'</span>';}).join('')+'</div>'+
       '<p style="margin-top:20px"><button id="exp2">Export picks</button> <button id="back">Back to last</button></p></div>';
     document.getElementById('exp2').onclick=doExport;
@@ -213,7 +234,7 @@ function doExport(){
   const out={batch:BATCH,n:DATA.length,tagged:Object.keys(state.picks).length,
     picks:DATA.map(d=>{const p=state.picks[d.item]||{};return {item:d.item,id:d.id,pick:p.pick||null,picked_source:p.picked_source||null,note:p.note||""};})};
   const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='voice-picks-'+BATCH+'.json';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='understudy-picks-'+BATCH+'.json';a.click();
   navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(out)).catch(()=>{});
 }
 document.getElementById('diffBtn').onclick=()=>{state.diff=!state.diff;save();render();};
@@ -237,9 +258,28 @@ render();
 </body></html>
 """
 
-html_out = (TEMPLATE
-            .replace("__DATA__", DATA)
-            .replace("__BATCH__", batch))
-out_path.parent.mkdir(parents=True, exist_ok=True)
-out_path.write_text(html_out, encoding="utf-8")
-print(f"wrote {out_path}  ({len(items)} items, {len(html_out)} bytes)")
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Build a blind-A/B voice tagger from an eval dir.")
+    ap.add_argument("eval_dir", nargs="?", default=str(EXAMPLE_DIR),
+                    help="dir with panel-key.json + <source>.jsonl files (default: the shipped example)")
+    ap.add_argument("out", nargs="?", default="",
+                    help="output html path (default: ./understudy-tagger.html)")
+    ap.add_argument("--label", default="", help="batch label shown in the header")
+    a = ap.parse_args(argv)
+
+    eval_dir = pathlib.Path(a.eval_dir)
+    out_path = pathlib.Path(a.out) if a.out else pathlib.Path.cwd() / "understudy-tagger.html"
+    label = a.label or eval_dir.name
+
+    items = build_items(eval_dir)
+    data = json.dumps(items, ensure_ascii=False)
+    html_out = TEMPLATE.replace("__DATA__", data).replace("__BATCH__", label)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(html_out, encoding="utf-8")
+    print(f"wrote {out_path}  ({len(items)} items, {len(html_out)} bytes)")
+    return items
+
+
+if __name__ == "__main__":
+    main()

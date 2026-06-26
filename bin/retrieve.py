@@ -12,13 +12,18 @@ at small corpus sizes and keeps the whole thing inspectable.
 CONFIGURE: edit BUCKETS below to your own recipient groups. They should match
 the section headers in corpus/registers.md.
 
+Corpus resolution (first that exists wins):
+  1. --pairs PATH            (explicit)
+  2. $UNDERSTUDY_PAIRS       (environment)
+  3. corpus/pairs.jsonl      (your real, gitignored corpus)
+  4. corpus/pairs.example.jsonl  (the synthetic example, so it runs on a fresh clone)
+
 Usage:
-  python3 retrieve.py --recipient "Some Person" [--query "what it's about"] [--k 3] [--exclude id]
+  python3 retrieve.py --recipient "Some Person" [--query "what it's about"] [--k 3] [--exclude id] [--pairs PATH]
 """
-import json, re, sys, argparse, pathlib
+import json, os, re, sys, argparse, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-PAIRS = ROOT / "corpus/pairs.jsonl"        # your verified, hand-authored (draft -> sent) pairs
 REG = ROOT / "corpus/registers.md"          # per-recipient voice profiles
 
 # CONFIGURE THESE for your own world. Keys must match registers.md section headers.
@@ -33,8 +38,10 @@ STOP = set("a an the to of for and or is are was were be been on in at by with f
            "will would can could should about into over up out so if not no yes do done get got "
            "one two three here there now then just like also more most can't don't".split())
 
+
 def toks(s):
     return {w for w in re.split(r"[^a-z0-9']+", (s or "").lower()) if w and w not in STOP and len(w) > 2}
+
 
 def bucket_of(recipient):
     r = (recipient or "").lower()
@@ -45,15 +52,35 @@ def bucket_of(recipient):
             best, hits = b, h
     return best
 
-def load_pairs():
-    out = []
-    if PAIRS.exists():
-        for ln in PAIRS.read_text(encoding="utf-8").splitlines():
+
+def resolve_pairs_path(explicit=None, root=ROOT):
+    """Return (path, used_fallback). Pure; testable. See module docstring for order."""
+    if explicit:
+        return pathlib.Path(explicit), False
+    env = os.environ.get("UNDERSTUDY_PAIRS")
+    if env:
+        return pathlib.Path(env), False
+    real = root / "corpus/pairs.jsonl"
+    if real.exists():
+        return real, False
+    return root / "corpus/pairs.example.jsonl", True
+
+
+def load_pairs(path):
+    """Return (rows, n_bad). Bad rows are counted, not silently swallowed."""
+    rows, n_bad = [], 0
+    p = pathlib.Path(path)
+    if p.exists():
+        for ln in p.read_text(encoding="utf-8").splitlines():
             ln = ln.strip()
-            if ln:
-                try: out.append(json.loads(ln))
-                except: pass
-    return out
+            if not ln:
+                continue
+            try:
+                rows.append(json.loads(ln))
+            except json.JSONDecodeError:
+                n_bad += 1
+    return rows, n_bad
+
 
 def register_section(bucket):
     if not bucket or not REG.exists():
@@ -62,9 +89,11 @@ def register_section(bucket):
     m = re.search(r"(^##\s+" + re.escape(bucket) + r".*?)(?=^##\s+|\Z)", txt, re.S | re.M)
     return m.group(1).strip() if m else ""
 
+
 def trunc(s, n=900):
     s = s or ""
     return s if len(s) <= n else s[:n] + " ...[truncated]"
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -72,10 +101,18 @@ def main():
     ap.add_argument("--query", default="")
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--exclude", default="")
+    ap.add_argument("--pairs", default="", help="path to a pairs.jsonl; overrides auto-resolution")
     a = ap.parse_args()
 
+    pairs_path, used_fallback = resolve_pairs_path(a.pairs or None)
+    pairs, n_bad = load_pairs(pairs_path)
+    if used_fallback:
+        print(f"note: no corpus/pairs.jsonl found, using the synthetic {pairs_path.name}. "
+              f"Supply your own pairs to draft in your voice.", file=sys.stderr)
+    if n_bad:
+        print(f"warning: skipped {n_bad} malformed line(s) in {pairs_path.name}.", file=sys.stderr)
+
     bucket = bucket_of(a.recipient)
-    pairs = load_pairs()
     q = toks(a.recipient + " " + a.query)
 
     scored = []
@@ -108,6 +145,7 @@ def main():
                "3. Self-score with the judge (`bin/judge.md`); revise once toward higher.\n"
                "4. Leave conviction and values as a named hook for the human. Show the draft + one line on what you applied.")
     print("\n".join(out))
+
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,3 @@
+{"id": "ex-1", "text": "Sam - $4M at 20 pre, confirmed. One board seat for you, plus one independent we name together. Docs this week, close end of month. Anything you want to push on before I send?"}
+{"id": "ex-2", "text": "before standup - auth bug's in the token refresh path, not login. Patch the refresh handler today? lmk"}
+{"id": "ex-3", "text": "Hi Dana - no rush. When you circle back, slide 4 is the one worth a look; it's the number your team flagged on the call. We re-ran it on your data and it held."}

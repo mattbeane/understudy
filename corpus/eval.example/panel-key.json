@@ -1,0 +1,5 @@
+{
+  "ex-1": {"A": "revised", "B": "draft"},
+  "ex-2": {"A": "draft", "B": "revised"},
+  "ex-3": {"A": "revised", "B": "draft"}
+}

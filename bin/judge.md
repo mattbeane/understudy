@@ -21,7 +21,7 @@ Ground truth is always the human's blind pick.
 > 1. Does it carry the human's warmth/energy where the moment calls for it (their voltage floor)?
 > 2. Does it cut manufactured persuasion, over-claiming, fake confidence? (Integrity over helpfulness.)
 > 3. Does it keep substance (numbers, terms, named people) and strip scaffolding (headers, bold labels)?
-> 4. Is the edit *dosage* right — a light touch on an already-good draft, a rewrite only when needed?
+> 4. Is the edit *dosage* right: a light touch on an already-good draft, a rewrite only when needed?
 > 5. Register fit for this recipient.
 > Treat any single surface tic (one punctuation mark, one em-dash) as a last-resort tiebreaker only.
 >

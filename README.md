@@ -64,7 +64,7 @@ The system was confidently wrong twice before it was right. That arc is the most
   *"I did not ship either of these."* Root cause: the harvest required a real message to exist, but
   never required *proof* that it did.
 - **v3** made proof non-negotiable. Every "sent" message is fetched from the live mailbox with its
-  real message id, or it is **discarded** — 38 of them were dropped rather than invented. The spec,
+  real message id, or it is **discarded**. 38 of them were dropped rather than invented. The spec,
   rebuilt on verified-only data, then won a blind A/B test **13 to 3**. The drafting pipeline,
   validated the same way, won **15 to 2**.
 
@@ -116,16 +116,20 @@ The reference implementation (`bin/`):
 - `reconcile.md` - the routine that fetches your real sends and feeds the loop.
 - `build_tagger.py` - generates a keyboard-driven blind A/B tagger so the human can label fast.
 
-Run the example out of the box:
+Run the example out of the box (no setup, it falls back to the synthetic corpus):
 ```bash
 python3 bin/retrieve.py --recipient "Sam (investor)" --k 2
-echo "Hi Sam, *Round:* confirming $4M..." | python3 bin/dosage.py --bucket "Investors / board"
+echo 'Hi Sam, *Round:* confirming $4M...' | python3 bin/dosage.py --bucket "Investors / board"
+python3 bin/build_tagger.py   # builds a blind A/B tagger from corpus/eval.example/
 ```
+Then drop in your own `corpus/pairs.jsonl` and it drafts toward you instead of the example.
+
+Schemas for every artifact: [docs/schemas.md](docs/schemas.md). The exact eval flow: [docs/eval-protocol.md](docs/eval-protocol.md).
 
 ## What's in here, and what isn't
 
 This repo is the **method and the code**. It does **not** contain anyone's real correspondence. The
-working corpus — actual emails, numbers, customer threads — stays private on the author's machine and
+working corpus (actual emails, numbers, customer threads) stays private on the author's machine and
 is never committed. The example pairs are synthetic. That separation is the point: share the loop,
 keep the data.
 
