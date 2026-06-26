@@ -45,11 +45,13 @@ def toks(s):
 
 def bucket_of(recipient):
     r = (recipient or "").lower()
-    best, hits = None, 0
+    # Longest-match-wins: score each bucket by the total length of its matched keywords,
+    # so a specific tag ("partner-ext") beats a generic substring of it ("partner").
+    best, score = None, 0
     for b, kws in BUCKETS.items():
-        h = sum(1 for k in kws if k in r)
-        if h > hits:
-            best, hits = b, h
+        s = sum(len(k) for k in kws if k in r)
+        if s > score:
+            best, score = b, s
     return best
 
 
@@ -105,6 +107,9 @@ def main():
     a = ap.parse_args()
 
     pairs_path, used_fallback = resolve_pairs_path(a.pairs or None)
+    if not pairs_path.exists():
+        # an explicit --pairs / $UNDERSTUDY_PAIRS that points nowhere is almost always a typo
+        print(f"warning: pairs file not found: {pairs_path}. Corpus is empty.", file=sys.stderr)
     pairs, n_bad = load_pairs(pairs_path)
     if used_fallback:
         print(f"note: no corpus/pairs.jsonl found, using the synthetic {pairs_path.name}. "

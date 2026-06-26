@@ -14,6 +14,24 @@ def test_bucket_of_unknown_is_none():
     assert retrieve.bucket_of("") is None
 
 
+def test_specific_tag_beats_generic_substring():
+    # "partner-ext" must not be stolen by Investors' "partner" substring
+    assert retrieve.bucket_of("BigCo (partner-ext)") == "Customers / external"
+    assert retrieve.bucket_of("partner-ext") == "Customers / external"
+    # a bare "partner" still reads as a board/investor partner
+    assert retrieve.bucket_of("Acme (partner)") == "Investors / board"
+
+
+def test_missing_explicit_pairs_warns(monkeypatch, capsys, tmp_path):
+    import sys
+    missing = tmp_path / "nope.jsonl"
+    monkeypatch.setattr(sys, "argv",
+                        ["retrieve.py", "--recipient", "Sam (investor)", "--pairs", str(missing)])
+    retrieve.main()
+    err = capsys.readouterr().err
+    assert "not found" in err
+
+
 def test_resolve_falls_back_to_example(tmp_path, monkeypatch):
     monkeypatch.delenv("UNDERSTUDY_PAIRS", raising=False)
     (tmp_path / "corpus").mkdir()

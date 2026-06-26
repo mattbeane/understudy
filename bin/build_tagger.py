@@ -17,10 +17,18 @@ Usage:
   python3 build_tagger.py [eval_dir] [out.html] [--label NAME]
   python3 build_tagger.py                      # runs the shipped example
 """
-import json, sys, argparse, pathlib
+import json, sys, argparse, html, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EXAMPLE_DIR = ROOT / "corpus/eval.example"
+
+
+def js_embed(obj):
+    """Serialize obj as JSON that is safe to drop inside a <script> tag and to use as a
+    JS string literal: neutralize </script> breakout and the line-separator chars that
+    terminate JS strings. The escapes stay valid JSON, so the browser decodes them back."""
+    s = json.dumps(obj, ensure_ascii=True)  # escapes U+2028/U+2029 and all non-ASCII
+    return s.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
 def load_jsonl(p):
@@ -84,7 +92,7 @@ def build_items(eval_dir):
 TEMPLATE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Understudy Tagger __BATCH__</title>
+<title>Understudy Tagger __BATCH_HTML__</title>
 <style>
   :root{
     --bg:#0f1419; --panel:#161c24; --panel2:#1c242e; --ink:#e6edf3; --dim:#8b97a6;
@@ -146,7 +154,7 @@ TEMPLATE = r"""<!doctype html>
 <main id="app"></main>
 <script>
 const DATA = __DATA__;
-const BATCH = "__BATCH__";
+const BATCH = __BATCH_JS__;
 const LS = "understudytag:"+BATCH;
 let state = JSON.parse(localStorage.getItem(LS) || "null") || {idx:0, picks:{}, diff:true, ref:false};
 state.diff = state.diff!==false;
@@ -273,8 +281,10 @@ def main(argv=None):
     label = a.label or eval_dir.name
 
     items = build_items(eval_dir)
-    data = json.dumps(items, ensure_ascii=False)
-    html_out = TEMPLATE.replace("__DATA__", data).replace("__BATCH__", label)
+    html_out = (TEMPLATE
+                .replace("__BATCH_JS__", js_embed(label))
+                .replace("__BATCH_HTML__", html.escape(label))
+                .replace("__DATA__", js_embed(items)))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html_out, encoding="utf-8")
     print(f"wrote {out_path}  ({len(items)} items, {len(html_out)} bytes)")
