@@ -6,15 +6,19 @@ learns from", with zero manual harvesting. It encodes every hard-won rule.
 
 ## Each run
 
-1. **Read new captures.** `ledger.jsonl` holds the drafts the assistant staged since
-   the last run (a PostToolUse capture hook writes them). Use `corpus/.reconcile_cursor`
-   (a timestamp) to process only new entries; update it at the end.
+1. **Work from what you SENT, not from staged drafts.** A capture hook only sees tool-staged
+   drafts; most drafts are chat text that fires no tool, and a draft you staged is not proof you
+   sent it (you may edit it, replace it, or not send at all). So treat your mailbox as ground
+   truth: pull your real sends since the cursor (Gmail/Slack `in:sent newer_than:Nd`), and record
+   each one's real `message_id`. `ledger.jsonl` is a bonus for tool-staged drafts, not the engine.
 
-2. **Fetch the real send, with provenance.** For each captured draft, find the message
-   you actually sent: Gmail (`search_threads` + `get_thread`) or Slack (`search` + `read_thread`),
-   matching the draft's recipient/subject/thread, authored by you, at or after the draft time.
-   Copy the body verbatim and record the real `message_id`. **If you cannot fetch it, skip it.
-   Never synthesize, paraphrase, or guess a send.** (This is the v2 failure; it cost a full rebuild.)
+2. **Find the draft behind each send by content, across ALL recent sessions.** For each
+   substantive send, search your assistant turns in *every* recent session transcript (not just
+   the current one) for the turn whose body best overlaps the sent message; the aligned region is
+   your draft. A send with no matching draft was written by the human alone, so skip it (no pair).
+   **Provenance is the send's real `message_id`, never the words "shipped it" in chat.** If you
+   cannot fetch the send, skip it. Never synthesize, paraphrase, or guess one. (This is the v2
+   failure; it cost a full rebuild. The lazy variant is mining one session and calling it done.)
 
 3. **Filter and append.** Pipe each pair to the helper, which enforces the rules and appends.
    Canonical field names are `draft` and `sent` (the legacy `claude_draft` / `matt_sent` are
