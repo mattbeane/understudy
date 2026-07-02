@@ -24,6 +24,20 @@ DEFAULT = pathlib.Path(__file__).resolve().parent.parent / "corpus/pairs.jsonl"
 HUMAN = pathlib.Path(os.environ.get("UNDERSTUDY_PAIRS", DEFAULT))
 BOT = re.compile(r'self;|self-post|scheduled-task|writing-momentum|pipeline channel|research feed|morning brief', re.I)
 BOT_FOOTER = re.compile(r'sent using claude|via (zapier|cron|scheduled)', re.I)
+# Personal-compensation / medical content: kept in the corpus for stats, but flagged so
+# retrieval never re-injects it into an unrelated drafting context. Deliberately narrow:
+# deal sizes and valuations are normal comms; a paystub is not.
+SENSITIVE = re.compile(r'\bsalary\b|paystub|pay stub|comp model|gross[- ]up|\bW-2\b|medical|diagnos|therapist|'
+                       r'\$\s?\d{1,3},\d{3}\s*/\s*(mo|month|yr|year)', re.I)
+
+
+def norm_for_sim(s):
+    """Formatting-normalize before similarity: strip quote markers, bullets, markdown
+    emphasis, collapse whitespace. Re-formatting is not editing."""
+    s = re.sub(r"^\s*>\s?", "", s, flags=re.M)
+    s = re.sub(r"^\s*[-*•]\s+", "", s, flags=re.M)
+    s = re.sub(r"[*_#`]+", "", s)
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def existing_ids():
@@ -64,7 +78,7 @@ def main():
         print(f"SKIP: dup ({mid})")
         return
 
-    sim = round(difflib.SequenceMatcher(None, draft, sent).ratio(), 4)
+    sim = round(difflib.SequenceMatcher(None, norm_for_sim(draft), norm_for_sim(sent), autojunk=False).ratio(), 4)
     row = {
         "ep_id": p.get("ep_id") or f"live-{mid}",
         "recipient": rec, "channel": p.get("channel", ""),
@@ -73,10 +87,15 @@ def main():
         "sim": sim, "edit_weight": "heavy" if sim < 0.85 else "light",
         "draft": draft, "sent": sent,
     }
+    if p.get("sent_ts"):
+        row["sent_ts"] = p["sent_ts"]
+    if p.get("sensitive") or SENSITIVE.search(draft) or SENSITIVE.search(sent):
+        row["sensitive"] = True
     HUMAN.parent.mkdir(parents=True, exist_ok=True)
     with open(HUMAN, "a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    print(f"KEPT: {rec[:36]} | sim {sim} ({row['edit_weight']}) | msg {mid}")
+    tag = " [sensitive]" if row.get("sensitive") else ""
+    print(f"KEPT: {rec[:36]} | sim {sim} ({row['edit_weight']}){tag} | msg {mid}")
 
 
 if __name__ == "__main__":

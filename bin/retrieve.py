@@ -116,6 +116,11 @@ def main():
               f"Supply your own pairs to draft in your voice.", file=sys.stderr)
     if n_bad:
         print(f"warning: skipped {n_bad} malformed line(s) in {pairs_path.name}.", file=sys.stderr)
+    n_sensitive = sum(1 for p in pairs if p.get("sensitive"))
+    if n_sensitive:
+        # sensitive rows still count toward corpus stats, but never enter a drafting context
+        print(f"note: {n_sensitive} sensitive pair(s) held out of retrieval conditioning.", file=sys.stderr)
+        pairs = [p for p in pairs if not p.get("sensitive")]
 
     bucket = bucket_of(a.recipient)
     q = toks(a.recipient + " " + a.query)

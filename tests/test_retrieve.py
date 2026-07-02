@@ -77,3 +77,23 @@ def test_shipped_example_corpus_is_clean():
     rows, n_bad = retrieve.load_pairs(retrieve.ROOT / "corpus/pairs.example.jsonl")
     assert n_bad == 0
     assert len(rows) >= 3
+
+
+def test_sensitive_pairs_never_enter_conditioning(monkeypatch, capsys, tmp_path):
+    import json
+    import sys
+    rows = [
+        {"ep_id": "a", "recipient": "Sam (investor)", "sim": 0.5, "edit_weight": "heavy",
+         "draft": "confirming the round", "sent": "confirmed"},
+        {"ep_id": "b", "recipient": "Sam (investor)", "sim": 0.5, "edit_weight": "heavy",
+         "sensitive": True, "draft": "my salary model attached", "sent": "salary confirmed at the number we discussed"},
+    ]
+    f = tmp_path / "p.jsonl"
+    f.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    monkeypatch.setattr(sys, "argv",
+                        ["retrieve.py", "--recipient", "Sam (investor)", "--pairs", str(f)])
+    retrieve.main()
+    captured = capsys.readouterr()
+    assert "salary" not in captured.out
+    assert "confirming the round" in captured.out
+    assert "1 sensitive pair(s) held out" in captured.err

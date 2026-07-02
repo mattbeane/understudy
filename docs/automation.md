@@ -39,14 +39,17 @@ only the mailbox knows what shipped, and only the clock knows which text came fi
 
 The blind A/B tagger is the only place a human is required, because the human pick is the
 ground truth. But there is a second ground truth that is free and already fetched: **what you
-actually sent.** So you can measure effectiveness continuously without tapping anything:
+actually sent.** If the loop is learning, your edits shrink: mean draft-to-sent similarity
+rises and the heavy-edit rate falls, month over month. Every reconciled pair already carries
+the measurement (`sim`, computed on formatting-normalized text, plus `sent_ts`), so the curve
+costs nothing. `bin/trend.py` computes it; pairs from a bootstrap harvest form the baseline
+cohort and dated pairs group by month. Sim up, heavy rate down: the loop is working.
 
-- For each situation, keep the **cold** draft (no pipeline) and the **pipeline** draft.
-- At reconcile, fetch the **sent** message.
-- Whichever draft lands closer to the sent message wins. (`bin/auto_effectiveness.py`)
-
-This runs every cycle, scores the pipeline against reality rather than a forced preference,
-and needs zero human input. It is arguably a better signal than the tagger.
+An earlier revision shipped a different tag-free metric here: compare a *cold* draft and a
+*pipeline* draft against the real send. Honest in principle, unusable in practice, because
+nothing in a normal workflow produces the cold twin (you draft once, with the loop active),
+so the metric could never run on real data. It is gone. The lesson is worth keeping: never
+ship a measurement whose input the system cannot produce.
 
 ## The line you can't automate
 
@@ -67,7 +70,7 @@ Re-deriving the spec changes how the system writes as you, so a bad one means si
 drift. Two honest options:
 
 - **Auto-apply with an interlock:** apply only when the guardrails hold (judge calibration
-  steady, `auto_effectiveness` not regressing on the new pairs), write the diff to version
+  steady, the `trend.py` shrinkage curve not regressing on the new pairs), write the diff to version
   control, keep a one-command rollback. Self-driving, with a seatbelt.
 - **Gate:** write the proposed delta to `proposals/<date>.md` and apply on one nod.
 
@@ -80,6 +83,7 @@ more than manual review costs you. Never auto-apply silently with no rollback.
 |---|---|---|
 | Capture drafts | yes | transcript mine at reconcile (hook for tool-staged drafts) |
 | Reconcile (fetch sends, append pairs) | yes | at session start, where connectors live |
-| Effectiveness + judge calibration | yes | against the real send (`auto_effectiveness.py`) |
+| Effectiveness | yes | edit-shrinkage trend vs your real sends (`bin/trend.py`) |
+| Reconcile core (match, extract) | yes | deterministic `bin/sweep.py`, not improvised each run |
 | Spec re-derivation | yes, guarded | interlock + rollback, or one-nod gate |
 | Blind A/B label | no, by design | optional human audit; never the model grading itself |

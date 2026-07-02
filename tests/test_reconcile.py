@@ -64,3 +64,39 @@ def test_sim_and_weight_computed(tmp_path):
     row = json.loads(pp.read_text().strip())
     assert 0.0 <= row["sim"] <= 1.0
     assert row["edit_weight"] == "heavy"
+
+
+def test_reformatting_is_not_editing(tmp_path):
+    """Bullets/quote-markers/markdown must not count as edits: sim stays high."""
+    pp = tmp_path / "p.jsonl"
+    run({"recipient": "Sam", "message_id": "m1",
+         "draft": "> **Plan:**\n> - ship friday\n> - close monday",
+         "sent": "Plan:\n• ship friday\n• close monday"}, pp)
+    row = json.loads(pp.read_text().strip())
+    assert row["sim"] >= 0.9
+    assert row["edit_weight"] == "light"
+
+
+def test_sensitive_flag_on_personal_comp(tmp_path):
+    pp = tmp_path / "p.jsonl"
+    out = run({"recipient": "Ops (payroll)", "message_id": "m1",
+               "draft": "here is my salary model from my latest paystub",
+               "sent": "attached my comp model, W-2 gross-up as discussed, $26,877 / mo"}, pp)
+    assert "[sensitive]" in out
+    assert json.loads(pp.read_text().strip())["sensitive"] is True
+
+
+def test_deal_size_is_not_sensitive(tmp_path):
+    """Round sizes and valuations are normal comms; only personal comp/medical flags."""
+    pp = tmp_path / "p.jsonl"
+    run({"recipient": "Sam (investor)", "message_id": "m1",
+         "draft": "confirming the $4M round at a $20M pre",
+         "sent": "confirmed: $4M at 20 pre, docs this week"}, pp)
+    assert "sensitive" not in json.loads(pp.read_text().strip())
+
+
+def test_sent_ts_preserved(tmp_path):
+    pp = tmp_path / "p.jsonl"
+    run({"recipient": "Sam", "draft": "d", "sent": "s", "message_id": "m1",
+         "sent_ts": "2026-06-25T15:57:02Z"}, pp)
+    assert json.loads(pp.read_text().strip())["sent_ts"] == "2026-06-25T15:57:02Z"

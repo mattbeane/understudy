@@ -116,8 +116,11 @@ The reference implementation (`bin/`):
 - `retrieve.py` - register + nearest real edits as conditioning. Configure `BUCKETS` to your recipients.
 - `dosage.py` - the edit-budget governor. Scans a draft, returns a tier and the exact tells to remove.
 - `judge.md` - the reward-model prompt and how to calibrate it.
-- `reconcile_helper.py` - appends a new pair with provenance + authorship + dedup enforced.
+- `sweep.py` - the reconcile core: for each real send, finds the draft behind it across all your
+  session transcripts, with the temporal guard (the draft must precede the send) built in.
+- `reconcile_helper.py` - appends a new pair with provenance + authorship + dedup + sensitive-flagging enforced.
 - `reconcile.md` - the routine that fetches your real sends and feeds the loop.
+- `trend.py` - the effectiveness curve: is mean similarity rising and the heavy-edit rate falling?
 - `build_tagger.py` - generates a keyboard-driven blind A/B tagger so the human can label fast.
 
 Run the example out of the box (no setup, it falls back to the synthetic corpus):

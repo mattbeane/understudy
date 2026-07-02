@@ -22,8 +22,25 @@ Your verified `(assistant draft -> what you sent)` pairs. Gitignored; you supply
 | `thread_id` | string | no | provenance: the containing thread |
 | `channel` | string | no | `"email"`, `"slack"`, ... |
 | `source` | string | no | free-form origin tag |
+| `sent_ts` | string | no | ISO 8601 time of the real send; enables the temporal guard and the shrinkage trend |
+| `sensitive` | bool | no | set on personal-comp/medical content; kept for stats, never retrieved into a drafting context |
 
 Legacy alias: `claude_draft` / `matt_sent` are accepted on input wherever `draft` / `sent` are.
+`sim` is computed on formatting-normalized text (quote markers, bullets, markdown emphasis,
+and whitespace stripped), so pure re-formatting does not count as editing.
+
+## `sends.jsonl`: sweep input (what you actually sent)
+
+The input to `bin/sweep.py`. Whatever has mailbox access (your assistant session, an export)
+writes one row per real send.
+
+| field | type | required | notes |
+|---|---|---|---|
+| `message_id` | string | yes | provenance; the sweep refuses rows without it |
+| `sent` | string | yes | verbatim body, quoted reply tail stripped |
+| `sent_ts` | string | yes | ISO 8601; no timestamp, no temporal guard, no pair (fail-closed) |
+| `recipient` | string | yes | passed through to the pair |
+| `thread_id`, `channel`, `context`, `ep_id` | string | no | passed through |
 
 ## `ledger.jsonl`: captured drafts awaiting reconcile
 
