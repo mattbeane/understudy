@@ -27,7 +27,7 @@ BOT_FOOTER = re.compile(r'sent using claude|via (zapier|cron|scheduled)', re.I)
 # Personal-compensation / medical content: kept in the corpus for stats, but flagged so
 # retrieval never re-injects it into an unrelated drafting context. Deliberately narrow:
 # deal sizes and valuations are normal comms; a paystub is not.
-SENSITIVE = re.compile(r'\bsalary\b|paystub|pay stub|comp model|gross[- ]up|\bW-2\b|medical|diagnos|therapist|'
+SENSITIVE = re.compile(r'\bsalary\b|paystub|pay stub|comp model|gross[- ]up|\bW-2\b|diagnos|therapist|\bmy (doctor|health insurance)\b|medical leave|'
                        r'\$\s?\d{1,3},\d{3}\s*/\s*(mo|month|yr|year)', re.I)
 
 

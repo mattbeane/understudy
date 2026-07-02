@@ -155,25 +155,41 @@ def aligned_region(turn_text, sent_text, min_block=13):
     return re.sub(r"^\s*>\s?", "", region, flags=re.M).strip()
 
 
-def find_draft(send, turns, min_ratio=0.12, min_draft=300):
-    """Best PRE-SEND turn for this send, or (None, reason)."""
+def _content_toks(s):
+    """Word tokens (5+ chars, non-stopword) for the cheap containment gate."""
+    return {w for w in re.findall(r"[a-z][a-z'-]{4,}", s.lower()) if w not in STOP}
+
+
+def find_draft(send, turns, min_ratio=0.12, min_draft=300, finalists=5):
+    """Best PRE-SEND turn for this send, or (None, reason).
+
+    Two-stage for speed: a token-containment gate ranks every pre-send turn cheaply,
+    then only a few finalists pay a word-level SequenceMatcher ratio. Char-level
+    difflib on prose is quadratic in pure Python (and its quick_ratio bound is
+    useless on same-language text), so it is reserved for the winner's extraction."""
     ts = parse_ts(send.get("sent_ts"))
     sent = send.get("sent") or ""
     if ts is None:
         return None, "no sent_ts (temporal guard impossible; fail-closed)"
-    anc = anchors(sent)
-    ns = norm(sent)
-    best = None
+    stoks = _content_toks(sent)
+    if not stoks:
+        return None, "send has no matchable content tokens"
+    scored = []
     for sess, tts, text in turns:
         if tts >= ts:
             continue
-        if anc and not any(a in text.lower() for a in anc):
-            continue
-        r = difflib.SequenceMatcher(None, norm(text), ns, autojunk=False).ratio()
+        cont = len(stoks & _content_toks(text)) / len(stoks)
+        if cont >= 0.15:
+            scored.append((cont, sess, tts, text))
+    if not scored:
+        return None, "no pre-send turn matches (human-authored)"
+    scored.sort(key=lambda x: -x[0])
+    ns_words = norm(sent).split()
+    best = None
+    for cont, sess, tts, text in scored[:finalists]:
+        r = difflib.SequenceMatcher(None, norm(text).split(), ns_words, autojunk=False).ratio()
         if best is None or r > best[0]:
             best = (r, sess, tts, text)
-    if best is None:
-        return None, "no pre-send turn matches (human-authored)"
     r, sess, tts, text = best
     if r < min_ratio:
         return None, f"best pre-send match too weak (r={r:.2f}; human-authored)"
@@ -189,7 +205,7 @@ def main(argv=None):
     ap.add_argument("--sends", required=True, help="jsonl of {message_id, sent, sent_ts, recipient, ...}")
     ap.add_argument("--transcripts", required=True, help="directory of session .jsonl files")
     ap.add_argument("--format", default="claude-code", choices=["claude-code", "simple"])
-    ap.add_argument("--min-ratio", type=float, default=0.12, help="floor on the normalized full-turn match")
+    ap.add_argument("--min-ratio", type=float, default=0.12, help="floor on the word-level match of the best pre-send turn")
     ap.add_argument("--min-draft", type=int, default=300, help="floor on the aligned-draft length")
     ap.add_argument("--min-sent", type=int, default=200, help="sends shorter than this are scheduling/acks: skipped")
     ap.add_argument("--min-turn", type=int, default=400, help="assistant turns shorter than this are ignored")
