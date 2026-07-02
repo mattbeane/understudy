@@ -29,9 +29,11 @@ the engine. (This is also what bootstraps the first corpus.)
 The mine runs **sends-first**, not drafts-first: pull what you actually sent from the mailbox,
 then for each send find the draft behind it by **content overlap** against your assistant turns
 across *all* recent sessions, and keep the aligned region as the draft (your chat framing around
-it is not part of the comm). Two failure modes to avoid, both learned the hard way: mining only
-the current session and declaring the rest empty, and trusting a "shipped it" in chat as proof a
-draft went out. A draft you staged is not a draft you sent; only the mailbox knows.
+it is not part of the comm). Three failure modes to avoid, all learned the hard way: mining only
+the current session and declaring the rest empty; trusting a "shipped it" in chat as proof a
+draft went out; and pairing a post-send restatement as if it were the draft, so enforce
+turn-timestamp < send-timestamp before matching. A draft you staged is not a draft you sent;
+only the mailbox knows what shipped, and only the clock knows which text came first.
 
 ## Validation without tagging
 

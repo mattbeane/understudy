@@ -20,6 +20,12 @@ learns from", with zero manual harvesting. It encodes every hard-won rule.
    cannot fetch the send, skip it. Never synthesize, paraphrase, or guess one. (This is the v2
    failure; it cost a full rebuild. The lazy variant is mining one session and calling it done.)
 
+   **And the draft must precede the send.** Match only turns timestamped before the send time.
+   A restatement written after the send usually matches better than the true draft, because the
+   author writes cleaner once the answer exists; an unguarded content match will pair a message
+   with its own echo and learn the edit delta backwards. The same clock check keeps the reconcile
+   session itself, which quotes fetched sends, from matching its own quotes.
+
 3. **Filter and append.** Pipe each pair to the helper, which enforces the rules and appends.
    Canonical field names are `draft` and `sent` (the legacy `claude_draft` / `matt_sent` are
    accepted as aliases):
